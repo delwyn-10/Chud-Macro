@@ -6,7 +6,9 @@ from http.server import SimpleHTTPRequestHandler
 from socketserver import TCPServer
 import threading
 
-# Import playwright cleanly since Render handles the installation
+# Point Playwright directly to a stable local directory before importing it
+os.environ["PLAYWRIGHT_BROWSERS_PATH"] = os.path.join(os.getcwd(), ".playwright-browsers")
+
 from playwright.async_api import async_playwright
 
 # --- CONFIGURATION ---
@@ -137,30 +139,3 @@ async def manage_account_loop(account_id, context, chat_box, page):
                         if i < loops - 1:
                             for _ in range(int(cooldown_time)):
                                 try:
-                                    live_messages = page.locator('li[class*="messageListItem"]')
-                                    if await live_messages.count() > 0:
-                                        current_last_msg = await live_messages.last.text_content()
-                                        live_from_me = (MAIN_DISPLAY_NAME.lower() in current_last_msg.lower() or 
-                                                        MAIN_USERNAME.lower() in current_last_msg.lower())
-                                        
-                                        if "!stop" in current_last_msg:
-                                            if live_from_me:
-                                                was_interrupted = True
-                                                break
-                                            else:
-                                                await chat_box.click()
-                                                await page.keyboard.type("YOU ARE NOT HIM LIL BRO")
-                                                await page.keyboard.press("Enter")
-                                                last_processed_msg = current_last_msg
-                                                await asyncio.sleep(0.5)
-                                except Exception:
-                                    pass
-                                await asyncio.sleep(1)
-                            
-                            if was_interrupted:
-                                break
-                    
-                    packs_actually_opened = actual_sequences_sent * 75
-                    await chat_box.click()
-                    if was_interrupted:
-                        await page.keyboard.type(f"🛑 [{account_id}] Paused! Operations cut at {packs_actually_opened} packs.")
