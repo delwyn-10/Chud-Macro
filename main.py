@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 import asyncio
+import zipfile
 
 # --- AUTOMATIC DEPENDENCY INSTALLER ---
 try:
@@ -18,17 +19,14 @@ CHANNEL_URL = "https://discord.com/channels/1259167876733206578/1520766594870153
 MAIN_DISPLAY_NAME = "Delwyn"
 MAIN_USERNAME = "clutch_gamer_19"
 
-# Profiles mapped to the folder names uploaded to your repository
 ACCOUNT_PROFILES = ["Account_Alpha", "Account_Beta"]
 
-# Custom loop cooldown delays
 ACCOUNT_COOLDOWNS = {
     "Account_Alpha": 16,
     "Account_Beta": 28
 }
 
 async def manage_account_loop(account_id, context, chat_box, page):
-    """Listens for command overrides and handles automated slash sequences."""
     cooldown_time = ACCOUNT_COOLDOWNS.get(account_id, 15)
     print(f"🤖 [{account_id}] Listening! Cooldown set to {cooldown_time}s. Monitoring chat...")
     
@@ -162,17 +160,25 @@ async def manage_account_loop(account_id, context, chat_box, page):
         await asyncio.sleep(1.0)
 
 async def run_bot():
+    # --- AUTO UNZIP FOR RENDER CLOUD RUNNER ---
+    for profile in ACCOUNT_PROFILES:
+        zip_path = f"{profile}.zip"
+        if os.path.exists(zip_path) and not os.path.exists(profile):
+            print(f"📦 Extracting cloud session files for {profile}...")
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(os.getcwd())
+            print(f"✅ Extraction completed for {profile}.")
+
     async with async_playwright() as p:
         tasks = []
         
         for profile in ACCOUNT_PROFILES:
-            # Reads the local subfolder uploaded from your computer path context
             user_data_dir = os.path.join(os.getcwd(), profile)
             print(f"Loading persistent data path for: {user_data_dir}")
             
             context = await p.chromium.launch_persistent_context(
                 user_data_dir,
-                headless=True,  # Set to True so it runs cleanly inside cloud web services
+                headless=True,  
                 args=[
                     "--disable-blink-features=AutomationControlled",
                     "--disable-extensions",
@@ -185,10 +191,8 @@ async def run_bot():
             print(f"Connecting browser stream for {profile} to Discord server...")
             await page.goto(CHANNEL_URL)
             
-            # Allow the persistent session cookie time to establish connection details
             await asyncio.sleep(5)
             
-            # Resolve the main chat target box
             chat_box = page.locator('div[role="textbox"]')
             tasks.append(manage_account_loop(profile, context, chat_box, page))
             
