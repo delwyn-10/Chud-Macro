@@ -1,27 +1,13 @@
 import os
 import sys
-import subprocess
 import asyncio
 import zipfile
 from http.server import SimpleHTTPRequestHandler
 from socketserver import TCPServer
 import threading
 
-# --- AUTOMATIC DEPENDENCY INSTALLER ---
-try:
-    from playwright.async_api import async_playwright
-except ModuleNotFoundError:
-    print("Installing missing components... Please wait a moment.")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright"])
-    from playwright.async_api import async_playwright
-
-# --- FORCE BROWSER DOWNLOAD INSIDE RUNTIME ENV ---
-if not os.path.exists(os.path.join(os.getcwd(), "browser_flag.txt")):
-    print("🌐 Downloading runtime browser components inside cloud runner...")
-    subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
-    with open("browser_flag.txt", "w") as f:
-        f.write("ready")
-    print("🌐 Runtime browser elements loaded successfully!\n")
+# Import playwright cleanly since Render handles the installation
+from playwright.async_api import async_playwright
 
 # --- CONFIGURATION ---
 CHANNEL_URL = "https://discord.com/channels/1259167876733206578/1520766594870153226"
