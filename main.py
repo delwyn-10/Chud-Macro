@@ -194,8 +194,13 @@ async def run_bot():
             )
             
             page = context.pages[0] if context.pages else await context.new_page()
+            
+            # --- INCREASE TIMEOUTS FOR CLOUD RUNNER ---
+            page.set_default_timeout(120000)  # Extended to 2 minutes to combat slow network spikes
+            
             print(f"Connecting browser stream for {profile} to Discord server...")
-            await page.goto(CHANNEL_URL)
+            # Wait until network requests have completely settled down before executing hooks
+            await page.goto(CHANNEL_URL, wait_until="networkidle")
             
             await asyncio.sleep(5)
             
