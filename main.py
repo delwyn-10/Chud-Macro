@@ -3,6 +3,9 @@ import sys
 import subprocess
 import asyncio
 import zipfile
+from http.server import SimpleHTTPRequestHandler
+from socketserver import TCPServer
+import threading
 
 # --- AUTOMATIC DEPENDENCY INSTALLER ---
 try:
@@ -31,6 +34,24 @@ ACCOUNT_COOLDOWNS = {
     "Account_Alpha": 16,
     "Account_Beta": 28
 }
+
+# --- DUMMY SERVER TO SATISFY RENDER PORT SCANNER ---
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 10000))
+    class QuietHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format, *args):
+            return # Keep logs clean
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"Bot is active.")
+            
+    print(f"📡 Starting dummy web framework on port {port} to keep Render happy...")
+    try:
+        with TCPServer(("0.0.0.0", port), QuietHandler) as httpd:
+            httpd.serve_forever()
+    except Exception as e:
+        print(f"⚠️ Web framework notification: {e}")
 
 async def manage_account_loop(account_id, context, chat_box, page):
     cooldown_time = ACCOUNT_COOLDOWNS.get(account_id, 15)
@@ -194,12 +215,9 @@ async def run_bot():
             )
             
             page = context.pages[0] if context.pages else await context.new_page()
-            
-            # --- INCREASE TIMEOUTS FOR CLOUD RUNNER ---
-            page.set_default_timeout(120000)  # Extended to 2 minutes to combat slow network spikes
+            page.set_default_timeout(120000)  # 2 minutes
             
             print(f"Connecting browser stream for {profile} to Discord server...")
-            # Wait until network requests have completely settled down before executing hooks
             await page.goto(CHANNEL_URL, wait_until="networkidle")
             
             await asyncio.sleep(5)
@@ -211,4 +229,8 @@ async def run_bot():
         await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
+    # Start the port server thread before turning on the async bot loop
+    server_thread = threading.Thread(target=run_dummy_server, daemon=True)
+    server_thread.start()
+    
     asyncio.run(run_bot())
